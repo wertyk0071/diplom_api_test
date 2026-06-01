@@ -1,0 +1,191 @@
+# Владимир Пахомов, 43-я когорта — Финальный проект. Инженер по тестированию плюс
+
+1ое задание
+
+1 type C:\Users\ProStore\.ssh\id_ed25519.pub
+
+2 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII4YPun2EG7BfB8YJLWgIiopWYgIirlE6DNZT4kvQxJi ww
+
+
+3 ssh -p 4554 05264176-2018-406a-8366-fb72c767b2a8@serverhub.praktikum-services.ru
+
+
+
+подключиться
+
+Зайти в базу данных.
+
+Написать SQL-запрос
+
+
+
+4 psql -U morty -d scooter_rent
+smith
+  
+5 \dt
+  cтруктурa таблиц
+6   \d "Couriers"
+     \d "Orders"
+7
+SELECT
+    c.login,
+    COUNT(o.id) AS active_orders
+FROM
+    "Couriers" c
+    JOIN "Orders" o ON c.id = o."courierId"
+WHERE
+    o."inDelivery" = true
+GROUP BY
+    c.login;
+
+scooter_rent=# SELECT
+scooter_rent-#     c.login,
+scooter_rent-#     COUNT(o.id) AS active_orders
+scooter_rent-# FROM
+scooter_rent-#     "Couriers" c
+scooter_rent-#     JOIN "Orders" o ON c.id = o."courierId"
+scooter_rent-# WHERE
+scooter_rent-#     o."inDelivery" = true
+scooter_rent-# GROUP BY
+scooter_rent-#     c.login;
+ login | active_orders
+-------+---------------
+ ninja |             2
+(1 row)
+
+
+
+
+
+scooter_rent=# SELECT
+scooter_rent-#     c.login,
+scooter_rent-#     COUNT(o.id) AS active_orders
+scooter_rent-# FROM
+scooter_rent-#     "Couriers" c
+scooter_rent-#     JOIN "Orders" o ON c.id = o."courierId"
+scooter_rent-# WHERE
+scooter_rent-#     o."inDelivery" = true
+scooter_rent-# GROUP BY
+scooter_rent-#     c.login;
+ login  | active_orders
+--------+---------------
+ ninja  |             2
+ ninja1 |             2
+(2 rows)
+
+
+
+создание курьера
+POST https://05264176-2018-406a-8366-fb72c767b2a8.serverhub.praktikum-services.ru/api/v1/courier
+raw JSON
+{
+    "login": "ninja1",
+    "password": "1234",
+    "firstName": "saske"
+}
+POST https://05264176-2018-406a-8366-fb72c767b2a8.serverhub.praktikum-services.ru/api/v1/orders
+создание заказа 
+{
+    "firstName": "Naruto",
+    "lastName": "Uchiha",
+    "address": "Konoha, 142 apt.",
+    "metroStation": 4,
+    "phone": "+7 800 355 35 35",
+    "rentTime": 5,
+    "deliveryDate": "2020-06-06",
+    "comment": "Saske, come back to Konoha",
+    "color": [
+        "BLACK"
+    ]
+}
+
+TRACK - 
+275885 принял за курьера
+159817 принял и завершил за курьера1
+959324 отменил через апи
+110255 просто созданный заказ
+
+2ое задание
+
+Из таблицы "Orders" выбрать колонку track (номер трекера) и вычислить статус по условиям:
+
+Если finished = true, статус 2.
+
+Если cancelled = true, статус -1.
+
+Если inDelivery = true, статус 1.
+
+Во всех остальных случаях статус 0.
+
+При этом важен порядок проверки: если заказ одновременно и завершён, и отменён (что маловероятно, но всё же), то приоритет отдаётся finished (2), затем cancelled (-1), затем inDelivery (1). В жизни так: если заказ выполнен, он не может быть в доставке, поэтому проверяем сначала finished, потом cancelled, потом inDelivery.
+
+
+
+ отмена заказа
+PUT  https://fb226a7e-e8bf-49b6-bf0c-1f379d210710.serverhub.praktikum-services.ru/api/v1/orders/cancel
+ 
+{
+    "track": 959324
+}
+
+SELECT
+    track,
+    CASE
+        WHEN "finished" = true THEN 2
+        WHEN "cancelled" = true THEN -1
+        WHEN "inDelivery" = true THEN 1
+        ELSE 0
+    END AS status
+FROM
+    "Orders";
+
+scooter_rent=# SELECT
+scooter_rent-#     track,
+scooter_rent-#     CASE
+scooter_rent-#         WHEN "finished" = true THEN 2
+scooter_rent-#         WHEN "cancelled" = true THEN -1
+scooter_rent-#         WHEN "inDelivery" = true THEN 1
+scooter_rent-#         ELSE 0
+scooter_rent-#     END AS status
+scooter_rent-# FROM
+scooter_rent-#     "Orders";
+ track  | status
+--------+--------
+ 275885 |      1
+ 275885 |      1
+ 159817 |      1
+ 159817 |      2
+ 959324 |      0
+ 110255 |      0
+(6 rows)
+
+статусы с исходными флагами в базе
+SELECT track, finished, cancelled, "inDelivery" FROM "Orders";
+
+scooter_rent=# SELECT track, finished, cancelled, "inDelivery" FROM "Orders";
+ track  | finished | cancelled | inDelivery
+--------+----------+-----------+------------
+ 275885 | f        | f         | t
+ 275885 | f        | f         | t
+ 159817 | f        | f         | t
+ 159817 | t        | f         | t
+ 959324 | f        | f         | f
+ 110255 | f        | f         | f
+(6 rows)
+
+запрос использует CASE для вычисления статуса согласно ТЗ.
+
+Приоритет условий (сначала finished, потом cancelled, потом inDelivery) обеспечивает корректную логику.
+
+Сравнение ожидаемого и фактического поведения
+Трекер	Что делал	                Ожидаемый статус (по флагам)	Фактический статус	Проблема?
+959324	Создал и отменил через API	-1 (cancelled = true)	        0 (все флаги false)	Да!
+275885	Принял курьером (дубли)        	1 (inDelivery = true)	        1	                Нет
+159817	Принял и завершил	        2 (finished = true)	        2	                Нет
+110255	Просто создал	                0	                        0	                Нет
+вывод: заказ 959324 должен был получить статус «Отменён» (-1), но в базе данных поле cancelled осталось false.
+Это баг статус заказа не сохранился корректно после отмены через API.
+
+при принятии заказа курьером в приложении создаётся дубликат записи трек 275885 и 159817 встречаются по два раза. Это подозрительно и может говорить о некорректной работе серверной логики или повторных запросах.
+
+SELECT track, cancelled FROM "Orders" WHERE track = 959324;
