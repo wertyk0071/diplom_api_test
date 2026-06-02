@@ -7,12 +7,11 @@
 - README.md - описание проекта и инструкция по запуску.
 - sql_db.txt - задание 1 и 2 работа с sql
 - vscodetest.png - скриншот с запуском теста в Visual Studio. 
-- tests/                
-__init__.py       
-config.py         URL и пути эндпоинтов
-test_data.json    тестовые данные
-api_client.py    функции для отправки запросов
-test_orders.py    сами тесты
+- tests/                     
+- config.py         URL и пути эндпоинтов
+- test_data.json    тестовые данные
+- api_client.py    функции для отправки запросов
+- test_orders.py    сами тесты
 
 ## Чек-лист проверок
 Автотест проверяет следующий сценарий:
